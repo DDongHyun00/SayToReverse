@@ -27,4 +27,7 @@ public class User {
     private Role role;
 
     private String phone;
+
+    @Column(nullable = false, unique = true)
+    private String nickname;
 }
