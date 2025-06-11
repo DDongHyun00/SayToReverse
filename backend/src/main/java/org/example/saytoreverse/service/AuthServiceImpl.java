@@ -13,6 +13,7 @@ import org.example.saytoreverse.repository.RefreshRepository;
 import org.example.saytoreverse.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -28,6 +29,7 @@ public class AuthServiceImpl implements AuthService {
 
     // 회원가입
     @Override
+    @Transactional
     public void signup(SignupRequestDto requestDto) {
         if (userRepository.findByEmail(requestDto.getEmail()).isPresent()) {
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
@@ -45,6 +47,7 @@ public class AuthServiceImpl implements AuthService {
 
     // 로그인
     @Override
+    @Transactional
     public void login(LoginRequestDto requestDto, HttpServletResponse response) {
         User user = userRepository.findByEmail(requestDto.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 이메일입니다."));
@@ -87,6 +90,7 @@ public class AuthServiceImpl implements AuthService {
 
 
     @Override
+    @Transactional
     public void logout(HttpServletRequest request, HttpServletResponse response) {
         // 쿠키에서 refreshToken을 꺼내기
         String refreshToken = Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[]{}))
@@ -120,6 +124,7 @@ public class AuthServiceImpl implements AuthService {
 
     // AccessToken 재발급
     @Override
+//    @Transactional
     public void reissue(HttpServletRequest request, HttpServletResponse response) {
 
         // 쿠키에서 RefreshToken 꺼내기
