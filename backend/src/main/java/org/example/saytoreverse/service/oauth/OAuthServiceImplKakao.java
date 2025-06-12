@@ -4,20 +4,23 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.oauth2.sdk.token.RefreshToken;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.example.saytoreverse.domain.OAuthUser;
-import org.example.saytoreverse.domain.Role;
-import org.example.saytoreverse.domain.SocialType;
-import org.example.saytoreverse.domain.User;
+import org.example.saytoreverse.domain.*;
 import org.example.saytoreverse.dto.kakao.KakaoUserDto;
 import org.example.saytoreverse.repository.OAuthUserRepository;
+import org.example.saytoreverse.repository.RefreshRepository;
 import org.example.saytoreverse.repository.UserRepository;
 import org.example.saytoreverse.config.jwt.JwtTokenProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.Arrays;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +28,7 @@ public class OAuthServiceImplKakao implements OAuthService {
     private final UserRepository userRepository;
     private final OAuthUserRepository oauthUserRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshRepository refreshRepository;
 
     @Value("${KAKAO_USER_INFO_URL}")
     private String KAKAO_USER_INFO_URL;
@@ -77,6 +81,26 @@ public class OAuthServiceImplKakao implements OAuthService {
 
         });
 
+        User user = oAuthUser.getUser();
+        // Access / Refresh 발급
+        String accessToken = jwtTokenProvider.createAccessToken(user.getId());
+        String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
+
+        // Refresh 저장 (있으면 갱신, 없으면 추가)
+        refreshRepository.findByUser(user).ifPresentOrElse(
+                existing -> {
+                    existing.setToken(refreshToken);
+                    refreshRepository.save(existing);
+                },
+                () -> {
+                    Refresh newRefresh = Refresh.builder().user(user).token(refreshToken).build();
+                    refreshRepository.save(newRefresh);
+                }
+        );
+
+        // 쿠키로 전달
+        setTokenCookie(response, "AccessToken", accessToken);
+        setTokenCookie(response, "RefreshToken", refreshToken);
     }
 
 
@@ -106,9 +130,6 @@ public class OAuthServiceImplKakao implements OAuthService {
         return new KakaoUserDto(jsonNode);
     }
 
-
-
-
     // ============ JWT 토큰 쿠키에 담기 ============ //
 
     /**
@@ -124,5 +145,79 @@ public class OAuthServiceImplKakao implements OAuthService {
         response.addCookie(cookie);
     }
 
+
+
+    @Override
+    @Transactional
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
+        String refreshToken = Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[]{}))
+                .filter(cookie -> cookie.getName().equals("RefreshToken"))
+                .findFirst()
+                .map(Cookie::getValue)
+                .orElse(null);
+
+        if (refreshToken != null && jwtTokenProvider.validateToken(refreshToken)) {
+            Long userId = jwtTokenProvider.getUserId(refreshToken);
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("사용자 없음"));
+
+            // DB에서 RefreshToken 삭제
+            refreshRepository.deleteByUser(user);
+        }
+
+        // 쿠키 만료
+        expireCookie("AccessToken", response);
+        expireCookie("RefreshToken", response);
+    }
+
+    @Override
+    @Transactional
+    public void reissue(HttpServletRequest request, HttpServletResponse response) {
+        String refreshToken = Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[]{}))
+                .filter(cookie -> cookie.getName().equals("RefreshToken"))
+                .findFirst()
+                .map(Cookie::getValue)
+                .orElse(null);
+
+        if (refreshToken == null || !jwtTokenProvider.validateToken(refreshToken)) {
+            throw new IllegalArgumentException("유효하지 않은 RefreshToken입니다.");
+        }
+
+        Long userId = jwtTokenProvider.getUserId(refreshToken);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자 없음"));
+
+        Refresh saved = refreshRepository.findByUser(user)
+                .orElseThrow(() -> new IllegalArgumentException("DB에 저장된 리프레시 토큰이 없습니다."));
+
+        if (!saved.getToken().equals(refreshToken)) {
+            throw new IllegalArgumentException("리프레시 토큰이 일치하지 않습니다.");
+        }
+
+        String newAccessToken = jwtTokenProvider.createAccessToken(userId);
+
+        // AccessToken 재발급 → 쿠키로 전달
+        addTokenToCookie("AccessToken", newAccessToken, response);
+    }
+
+    // 기존에 있는 쿠키 추가 메서드 재사용
+    private void addTokenToCookie(String name, String token, HttpServletResponse response) {
+        Cookie cookie = new Cookie(name, token);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(60 * 60); // 1시간
+        response.addCookie(cookie);
+    }
+
+    // 쿠키 삭제용
+    private void expireCookie(String name, HttpServletResponse response) {
+        Cookie cookie = new Cookie(name, null);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
+    }
 
 }
