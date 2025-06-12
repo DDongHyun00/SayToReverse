@@ -1,12 +1,9 @@
-import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import MainPage from "./pages/MainPage.jsx";
-import SignupPage from "./pages/SignupPage.jsx";
-import LoginPage from "./pages/LoginPage.jsx";
+import MainPage from "../pages/MainPage";
+import SignupPage from "../pages/SignupPage";
+import LoginPage from "../pages/LoginPage";
 
-function App() {
-  console.log(import.meta.env.VITE_API_URL);
-
+const Router = () => {
   return (
     <BrowserRouter>
       <Routes>
@@ -16,6 +13,6 @@ function App() {
       </Routes>
     </BrowserRouter>
   );
-}
+};
 
-export default App;
+export default Router;
