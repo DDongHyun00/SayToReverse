@@ -2,6 +2,7 @@ package org.example.saytoreverse.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.example.saytoreverse.domain.User;
+import org.example.saytoreverse.dto.UserResponseDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,12 +18,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/api/user")
 public class UserController {
+
     @GetMapping("/me")
     public ResponseEntity<?> getMyInfo(@AuthenticationPrincipal User user){
+
         if(user == null){
             return ResponseEntity.status(401).body("인증되지 않은 사용자입니다.");
         }
 
-        return ResponseEntity.ok().body("로그인한 유저 : " + user.getEmail());
+        return ResponseEntity.ok(new UserResponseDto(user));
     }
 }

@@ -39,6 +39,8 @@ public class AuthServiceImpl implements AuthService {
                 .email(requestDto.getEmail())
                 .password(passwordEncoder.encode(requestDto.getPassword()))
                 .nickname(requestDto.getNickname())
+                .name(requestDto.getName())
+                .phone(requestDto.getPhone())
                 .role(org.example.saytoreverse.domain.Role.USER)
                 .build();
 
