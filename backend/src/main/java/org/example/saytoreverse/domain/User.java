@@ -34,7 +34,4 @@ public class User {
     @Column(nullable = false, unique = true)
     private String nickname;
 
-    // 소셜 로그인 유저일 경우 연결
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private OAuthUser oauthUser;
 }

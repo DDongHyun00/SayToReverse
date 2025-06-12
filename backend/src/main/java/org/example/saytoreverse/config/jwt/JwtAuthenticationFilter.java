@@ -6,6 +6,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.example.saytoreverse.domain.CustomUserDetails;
 import org.example.saytoreverse.domain.User;
 import org.example.saytoreverse.repository.UserRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -44,19 +45,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Optional<User> userOptional = userRepository.findById(userId);
             if(userOptional.isPresent()) {
                 User user = userOptional.get();
+                CustomUserDetails userDetails = new CustomUserDetails(user);
 
                 // 스프링 시큐리티 인증 객체 생성
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 user,                // 인증 주체(principal)
                                 null,                // 비밀번호 (null로 설정)
-                                null                 // 권한 정보 (ex. USER/ADMIN - 우선 null)
+                                userDetails.getAuthorities()                 // 권한 정보 (ex. USER/ADMIN - 우선 null)
                         );
 
                 // 요청 정보 세팅 (IP, 세션 등)
                 authentication.setDetails(
                         new WebAuthenticationDetailsSource().buildDetails(request)
                 );
+
+//                System.out.println("🟡 AccessToken = " + token);
+//                System.out.println("🟡 유효한 토큰인가? " + jwtTokenProvider.validateToken(token));
+//                System.out.println("🟡 추출된 userId = " + userId);
+//                System.out.println("🟡 DB에서 조회된 사용자 있음? " + userOptional.isPresent());
 
                 // 인증 객체를 SecurityContext에 등록 [핵심]
                 SecurityContextHolder.getContext().setAuthentication(authentication);
