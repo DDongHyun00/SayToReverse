@@ -2,6 +2,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import CenterWrapper from "../styles/CenterWrapper.jsx";
+import logo from "../assets/SayToReserveLogo.png";
 
 const TitlePage = () => {
   const navigate = useNavigate();
@@ -15,9 +16,9 @@ const TitlePage = () => {
     <CenterWrapper>
       {/* 콘텐츠 박스 */}
       <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4 text-white">SayToReserve</h1>
+        <img src={logo} alt="SayToReserveLogo" className="mx-auto w-40 mb-4" />
+        <h1 className="text-3xl font-bold mb-2 text-white">SayToReserve</h1>
         <p className="mb-6 text-white">환영합니다!</p>
-
         {/* 기본 로그인/회원가입 버튼 */}
         <div>
           <button
@@ -33,10 +34,8 @@ const TitlePage = () => {
             로그인
           </button>
         </div>
-
         {/* 구분선 */}
-        <div className="text-white text-sm mb-2">또는</div>
-
+        <div className="text-white text-sm mt-2 mb-2">또는</div>
         {/* 카카오 소셜 로그인 버튼 */}
         <button
           onClick={handleKakaoLogin}
