@@ -1,19 +1,13 @@
 import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import MainPage from "./pages/MainPage.jsx";
-import SignupPage from "./pages/SignupPage.jsx";
-import LoginPage from "./pages/LoginPage.jsx";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Router from "./routes/Router.jsx";
 
 function App() {
   console.log(import.meta.env.VITE_API_URL);
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<MainPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/login" element={<LoginPage />} />
-      </Routes>
+      <Router />
     </BrowserRouter>
   );
 }

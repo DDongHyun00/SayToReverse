@@ -2,6 +2,7 @@ package org.example.saytoreverse.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.saytoreverse.dto.LoginRequestDto;
 import org.example.saytoreverse.dto.SignupRequestDto;
@@ -22,14 +23,14 @@ public class AuthController {
 
     // 회원가입
     @PostMapping("/signup")
-    public ResponseEntity<String> signup(@RequestBody SignupRequestDto requestDto) {
+    public ResponseEntity<String> signup(@Valid @RequestBody SignupRequestDto requestDto) {
         authService.signup(requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body("회원가입 성공!");
     }
 
     // 로그인
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginRequestDto requestDto, HttpServletResponse response) {
+    public ResponseEntity<String> login(@Valid @RequestBody LoginRequestDto requestDto, HttpServletResponse response) {
         authService.login(requestDto, response);
         return ResponseEntity.ok("로그인 성공! 토큰 발급 완료");
     }

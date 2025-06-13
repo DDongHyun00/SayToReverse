@@ -3,14 +3,20 @@ package org.example.saytoreverse.controller;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.saytoreverse.external.kakao.KakaoTokenService;
 import org.example.saytoreverse.service.oauth.OAuthService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 /*
 * 인가 코드(code) → accessToken 요청 → 로그인 처리
@@ -20,10 +26,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 public class OAuthKakaoController {
 
     private final KakaoTokenService kakaoTokenService;
     private final OAuthService kakaoOAuthService;
+
 
     /**
      * 카카오 로그인 콜백 URL
@@ -31,12 +39,33 @@ public class OAuthKakaoController {
      */
 
     @GetMapping("/oauth/kakao/callback")
-    public String kakaoCallback(@RequestParam("code") String code, HttpServletResponse response) throws Exception {
+    public void kakaoCallback(@RequestParam("code") String code, HttpServletResponse response) throws Exception {
         // 인가코드로 accessToken 요청
         String accessToken = kakaoTokenService.requestAccessToken(code);
 
         // accessToken으로 사용자 정보 조희 + 자동 로그인 처리
         kakaoOAuthService.login(accessToken, response);
-        return "카카오 로그인 성공";
+        log.info("카카오 로그인 성공: backend");
+
+        response.sendRedirect("http://localhost:5173/main");
     }
+
+    @Value("${KAKAO_CLIENT_ID}")
+    private String clientId; // 또는 @Value 로 가져오기
+    @Value("${KAKAO_REDIRECT_URI}")
+    private String redirectUri;
+
+    // OAuthKakaoController.java
+    @GetMapping("/oauth/kakao")
+    public void redirectToKakao(HttpServletResponse response) throws IOException {
+
+        String kakaoAuthUrl = "https://kauth.kakao.com/oauth/authorize"
+                + "?response_type=code"
+                + "&client_id=" + clientId
+                + "&redirect_uri=" + redirectUri
+                + "&prompt=login";
+
+        response.sendRedirect(kakaoAuthUrl);
+    }
+
 }
