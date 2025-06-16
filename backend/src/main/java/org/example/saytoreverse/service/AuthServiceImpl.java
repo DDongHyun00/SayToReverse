@@ -122,12 +122,14 @@ public class AuthServiceImpl implements AuthService {
                 .orElse(null);
 
         if (accessToken != null && jwtTokenProvider.validateToken(accessToken)) {
+            Long userId = jwtTokenProvider.getUserId(accessToken);
             LocalDateTime expiration = jwtTokenProvider.getExpiration(accessToken)
                     .toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
 
             TokenBlacklist blacklist = TokenBlacklist.builder()
                     .token(accessToken)
                     .expiredAt(expiration)
+                    .userId(userId)
                     .build();
 
             tokenBlacklistRepository.save(blacklist);
