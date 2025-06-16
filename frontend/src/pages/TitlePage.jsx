@@ -41,7 +41,27 @@ const TitlePage = () => {
           onClick={handleKakaoLogin}
           className="bg-yellow-300 text-black font-bold px-4 py-2 rounded hover:bg-yellow-400"
         >
+          {/*<img*/}
+          {/*  src="https://static.kakao.com/static/img/common/logo/kakaolink_btn_small.png"*/}
+          {/*  alt="Kakao"*/}
+          {/*  className="inline-block w-5 h-5 mr-2 align-middle"*/}
+          {/*/>*/}
           카카오 로그인
+        </button>
+        {/* 구분선 */}
+        <div className="text-white text-sm mt-2 mb-2"></div>
+        <button
+          onClick={() =>
+            (window.location.href = "http://localhost:8080/oauth/google")
+          }
+          className="bg-white text-black font-bold px-4 py-2 rounded hover:bg-gray-200 mt-2"
+        >
+          <img
+            src="https://developers.google.com/identity/images/g-logo.png"
+            alt="Google"
+            className="inline-block w-5 h-5 mr-2 align-middle"
+          />
+          구글 로그인
         </button>
       </div>
     </CenterWrapper>
