@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.saytoreverse.external.kakao.KakaoTokenService;
 import org.example.saytoreverse.service.oauth.OAuthService;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -25,13 +26,20 @@ import java.nio.charset.StandardCharsets;
 */
 
 @RestController
-@RequiredArgsConstructor
 @Slf4j
 public class OAuthKakaoController {
 
     private final KakaoTokenService kakaoTokenService;
-    private final OAuthService kakaoOAuthService;
+    private final @Qualifier("OAuthServiceImplKakao") OAuthService kakaoOAuthService;
 
+
+    public OAuthKakaoController(
+            KakaoTokenService kakaoTokenService,
+            @Qualifier("OAuthServiceImplKakao") OAuthService kakaoOAuthService
+    ) {
+        this.kakaoTokenService = kakaoTokenService;
+        this.kakaoOAuthService = kakaoOAuthService;
+    }
 
     /**
      * 카카오 로그인 콜백 URL
@@ -54,6 +62,7 @@ public class OAuthKakaoController {
     private String clientId; // 또는 @Value 로 가져오기
     @Value("${KAKAO_REDIRECT_URI}")
     private String redirectUri;
+
 
     // OAuthKakaoController.java
     @GetMapping("/oauth/kakao")

@@ -22,8 +22,8 @@ import org.springframework.web.client.RestTemplate;
 import java.util.Arrays;
 import java.util.Optional;
 
-@Service
 @RequiredArgsConstructor
+@Service("OAuthServiceImplKakao")
 public class OAuthServiceImplKakao implements OAuthService {
     private final UserRepository userRepository;
     private final OAuthUserRepository oauthUserRepository;
