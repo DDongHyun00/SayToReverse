@@ -1,13 +1,17 @@
 package org.example.saytoreverse.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.saytoreverse.external.Google.GoogleTokenService;
 import org.example.saytoreverse.service.oauth.OAuthService;
+import org.example.saytoreverse.service.oauth.OAuthServiceImplGoogle;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -15,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 public class OAuthGoogleController {
 
+    private final OAuthServiceImplGoogle oauthServiceImplGoogle;
     private final GoogleTokenService googleTokenService;
     @Qualifier("OAuthServiceImplGoogle")
     private final OAuthService googleOAuthService;
@@ -22,9 +27,10 @@ public class OAuthGoogleController {
     private String GOOGLE_AUTH_URL;
 
     public OAuthGoogleController(
-            GoogleTokenService googleTokenService,
+            OAuthServiceImplGoogle oauthServiceImplGoogle, GoogleTokenService googleTokenService,
             @Qualifier("OAuthServiceImplGoogle") OAuthService googleOAuthService
     ) {
+        this.oauthServiceImplGoogle = oauthServiceImplGoogle;
         this.googleTokenService = googleTokenService;
         this.googleOAuthService = googleOAuthService;
     }
@@ -47,5 +53,11 @@ public class OAuthGoogleController {
     public void redirectToGoogle(HttpServletResponse response) throws Exception {
         log.info("[구글 로그인 시도] Google OAuth Redirect 시작");
         response.sendRedirect(GOOGLE_AUTH_URL);  //
+    }
+
+    @PostMapping("/oauth/google/logout")
+    public ResponseEntity<Void> googleLogout(HttpServletRequest request, HttpServletResponse response) {
+        oauthServiceImplGoogle.logout(request, response);
+        return ResponseEntity.ok().build();
     }
 }

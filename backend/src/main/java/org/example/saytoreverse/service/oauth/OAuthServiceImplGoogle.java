@@ -12,6 +12,7 @@ import org.example.saytoreverse.domain.*;
 import org.example.saytoreverse.dto.Google.GoogleUserDto;
 import org.example.saytoreverse.repository.OAuthUserRepository;
 import org.example.saytoreverse.repository.RefreshRepository;
+import org.example.saytoreverse.repository.TokenBlacklistRepository;
 import org.example.saytoreverse.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -19,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Optional;
 
@@ -32,6 +35,7 @@ public class OAuthServiceImplGoogle implements OAuthService {
     private final OAuthUserRepository oauthUserRepository;
     private final RefreshRepository refreshRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final TokenBlacklistRepository tokenBlacklistRepository;
 
     @Value("${GOOGLE_USER_INFO_URL}")
     private String GOOGLE_USER_INFO_URL;
@@ -142,6 +146,24 @@ public class OAuthServiceImplGoogle implements OAuthService {
     @Override
     @Transactional
     public void logout(HttpServletRequest request, HttpServletResponse response) {
+        // AccessToken 블랙리스트 등록
+        String accessToken = extractAccessTokenFromCookie(request);
+
+        if (accessToken != null && jwtTokenProvider.validateToken(accessToken)) {
+            LocalDateTime expiration = jwtTokenProvider.getExpiration(accessToken)
+                    .toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+
+            Long userId = jwtTokenProvider.getUserId(accessToken);
+
+            TokenBlacklist blacklist = TokenBlacklist.builder()
+                    .token(accessToken)
+                    .expiredAt(expiration)
+                    .userId(userId)
+                    .build();
+
+            tokenBlacklistRepository.save(blacklist);
+        }
+
         String refreshToken = Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[]{}))
                 .filter(cookie -> cookie.getName().equals("RefreshToken"))
                 .findFirst()
@@ -162,6 +184,15 @@ public class OAuthServiceImplGoogle implements OAuthService {
         expireCookie("RefreshToken", response);
 
     }
+    private String extractAccessTokenFromCookie(HttpServletRequest request) {
+        return Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[]{}))
+                .filter(cookie -> cookie.getName().equals("AccessToken"))
+                .findFirst()
+                .map(Cookie::getValue)
+                .orElse(null);
+    }
+
+
     @Override
     @Transactional
     public void reissue(HttpServletRequest request, HttpServletResponse response) {
