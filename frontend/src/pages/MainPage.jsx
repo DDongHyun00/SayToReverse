@@ -9,9 +9,17 @@ const MainPage = () => {
 
   const handleLogout = async () => {
     try {
-      await axios.post("api/auth/logout"); // 서버 로그아웃 API 호출
+      const socialType = localStorage.getItem("socialType");
+
+      let logoutUrl = "/api/auth/logout"; // 기본: 일반 로그인
+      if (socialType === "KAKAO") logoutUrl = "/oauth/kakao/logout";
+      if (socialType === "GOOGLE") logoutUrl = "/oauth/google/logout";
+
+      await axios.post(logoutUrl);
+      localStorage.removeItem("socialType"); // 정리
+
       alert("로그아웃 되었습니다.");
-      navigate("/"); // 로그인 페이지로 리다이렉트
+      navigate("/"); // 로그인 페이지로 이동
     } catch (error) {
       console.error("로그아웃 실패:", error);
       alert("로그아웃 중 오류 발생");

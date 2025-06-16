@@ -1,17 +1,21 @@
 package org.example.saytoreverse.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.saytoreverse.external.kakao.KakaoTokenService;
 import org.example.saytoreverse.service.oauth.OAuthService;
+import org.example.saytoreverse.service.oauth.OAuthServiceImplKakao;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -29,14 +33,16 @@ import java.nio.charset.StandardCharsets;
 @Slf4j
 public class OAuthKakaoController {
 
+    private final OAuthServiceImplKakao oAuthServiceImplKakao;
     private final KakaoTokenService kakaoTokenService;
     private final @Qualifier("OAuthServiceImplKakao") OAuthService kakaoOAuthService;
 
 
     public OAuthKakaoController(
-            KakaoTokenService kakaoTokenService,
+            OAuthServiceImplKakao oAuthServiceImplKakao, KakaoTokenService kakaoTokenService,
             @Qualifier("OAuthServiceImplKakao") OAuthService kakaoOAuthService
     ) {
+        this.oAuthServiceImplKakao = oAuthServiceImplKakao;
         this.kakaoTokenService = kakaoTokenService;
         this.kakaoOAuthService = kakaoOAuthService;
     }
@@ -78,4 +84,9 @@ public class OAuthKakaoController {
         response.sendRedirect(kakaoAuthUrl);
     }
 
+    @PostMapping("/oauth/kakao/logout")
+    public ResponseEntity<Void> kakaoLogout(HttpServletRequest request, HttpServletResponse response) {
+        oAuthServiceImplKakao.logout(request, response);
+        return ResponseEntity.ok().build();
+    }
 }
