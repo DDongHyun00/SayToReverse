@@ -12,6 +12,11 @@ const TitlePage = () => {
     window.location.href = "http://localhost:8080/oauth/kakao";
   };
 
+  const handleGoogleLogin = () => {
+    // 백엔드 카카오 OAuth 시작 URL로 리디렉트
+    window.location.href = "http://localhost:8080/oauth/google";
+  };
+
   return (
     <CenterWrapper>
       {/* 콘텐츠 박스 */}
@@ -37,32 +42,36 @@ const TitlePage = () => {
         {/* 구분선 */}
         <div className="text-white text-sm mt-2 mb-2">또는</div>
         {/* 카카오 소셜 로그인 버튼 */}
-        <button
-          onClick={handleKakaoLogin}
-          className="bg-yellow-300 text-black font-bold px-4 py-2 rounded hover:bg-yellow-400"
-        >
-          {/*<img*/}
-          {/*  src="https://static.kakao.com/static/img/common/logo/kakaolink_btn_small.png"*/}
-          {/*  alt="Kakao"*/}
-          {/*  className="inline-block w-5 h-5 mr-2 align-middle"*/}
-          {/*/>*/}
-          카카오 로그인
-        </button>
+        <div className="w-[300px] mx-auto">
+          <button onClick={handleKakaoLogin} className="w-full">
+            <img
+              src="src/assets/kakao_Login__Button_large.png" // 경로 확인 필수!
+              alt="카카오 로그인"
+              className="w-full h-10 object-cover"
+            />
+          </button>
+        </div>
         {/* 구분선 */}
         <div className="text-white text-sm mt-2 mb-2"></div>
-        <button
-          onClick={() =>
-            (window.location.href = "http://localhost:8080/oauth/google")
-          }
-          className="bg-white text-black font-bold px-4 py-2 rounded hover:bg-gray-200 mt-2"
-        >
-          <img
-            src="https://developers.google.com/identity/images/g-logo.png"
-            alt="Google"
-            className="inline-block w-5 h-5 mr-2 align-middle"
-          />
-          구글 로그인
-        </button>
+        {/* 구글 소셜 로그인 버튼 */}
+        <div className="w-[300px] mx-auto">
+          <button
+            onClick={handleGoogleLogin}
+            className="relative w-full h-10 rounded font-bold text-[14px] bg-white text-black hover:bg-gray-100"
+          >
+            {/* 로고: 절대 위치로 왼쪽에 고정 */}
+            <img
+              src="https://developers.google.com/identity/images/g-logo.png"
+              alt="Google"
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5"
+            />
+
+            {/* 텍스트: flex 안 쓰고 그냥 가운데 */}
+            <span className="block text-center w-full leading-none ml-2 text-sm font-medium tracking-tight">
+              구글 로그인
+            </span>
+          </button>
+        </div>
       </div>
     </CenterWrapper>
   );
