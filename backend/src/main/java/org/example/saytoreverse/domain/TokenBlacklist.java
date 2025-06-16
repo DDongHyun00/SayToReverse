@@ -24,4 +24,7 @@ public class TokenBlacklist {
     @Column(nullable = false)
     private LocalDateTime expiredAt;
 
+    @Column
+    private Long userId;
+
 }
