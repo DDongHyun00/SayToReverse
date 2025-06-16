@@ -70,4 +70,14 @@ public class JwtTokenProvider {
 
     }
 
+    // AccessToken 만료시간 추출
+    public Date getExpiration(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getExpiration();
+    }
+
 }
