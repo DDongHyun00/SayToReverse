@@ -73,6 +73,7 @@ public class OAuthKakaoController {
                 + "&client_id=" + clientId
                 + "&redirect_uri=" + redirectUri
                 + "&prompt=login";
+//                + "&prompt=consent";
 
         response.sendRedirect(kakaoAuthUrl);
     }

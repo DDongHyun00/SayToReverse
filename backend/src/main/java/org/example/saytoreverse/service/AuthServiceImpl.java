@@ -6,15 +6,19 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.example.saytoreverse.config.jwt.JwtTokenProvider;
 import org.example.saytoreverse.domain.Refresh;
+import org.example.saytoreverse.domain.TokenBlacklist;
 import org.example.saytoreverse.domain.User;
 import org.example.saytoreverse.dto.LoginRequestDto;
 import org.example.saytoreverse.dto.SignupRequestDto;
 import org.example.saytoreverse.repository.RefreshRepository;
+import org.example.saytoreverse.repository.TokenBlacklistRepository;
 import org.example.saytoreverse.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Optional;
 
@@ -25,6 +29,7 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshRepository refreshRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
+    private final TokenBlacklistRepository tokenBlacklistRepository;
 
 
     // 회원가입
@@ -108,6 +113,24 @@ public class AuthServiceImpl implements AuthService {
 
             // DB에서 RefreshToken 삭제
             refreshRepository.deleteByUser(user);
+        }
+        // AccessToken 블랙리스트 등록
+        String accessToken = Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[]{}))
+                .filter(cookie -> cookie.getName().equals("AccessToken"))
+                .findFirst()
+                .map(Cookie::getValue)
+                .orElse(null);
+
+        if (accessToken != null && jwtTokenProvider.validateToken(accessToken)) {
+            LocalDateTime expiration = jwtTokenProvider.getExpiration(accessToken)
+                    .toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+
+            TokenBlacklist blacklist = TokenBlacklist.builder()
+                    .token(accessToken)
+                    .expiredAt(expiration)
+                    .build();
+
+            tokenBlacklistRepository.save(blacklist);
         }
 
         // 쿠키 삭제 (Access, Refresh 둘 다 삭제)

@@ -33,9 +33,9 @@ public class KakaoTokenService {
 
     public String requestAccessToken(String authorizationCode) throws Exception {
 
-        System.out.println("🟡 [KakaoTokenService] clientId = " + clientId);
-        System.out.println("🟡 [KakaoTokenService] redirectUri = " + redirectUri);
-        System.out.println("🟡 [KakaoTokenService] code = " + authorizationCode);
+        System.out.println("[KakaoTokenService] clientId = " + clientId);
+        System.out.println("[KakaoTokenService] redirectUri = " + redirectUri);
+        System.out.println("[KakaoTokenService] code = " + authorizationCode);
 
         // 요청 헤더 만들기
         HttpHeaders headers = new HttpHeaders();

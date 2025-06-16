@@ -8,10 +8,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.example.saytoreverse.domain.CustomUserDetails;
 import org.example.saytoreverse.domain.User;
+import org.example.saytoreverse.repository.TokenBlacklistRepository;
 import org.example.saytoreverse.repository.UserRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.parameters.P;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -26,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;  // jwt 토큰 처리 유틸
     private final UserRepository userRepository;      // 사용자 정보 조회용
+    private final TokenBlacklistRepository tokenBlacklistRepository; // 토큰 블랙리스트 확인
 
     /* 요청이 들어올 때마다 실행되는 메서드*/
 
@@ -37,6 +38,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 토큰이 존재하고 유효하면 인증 처리
         if(token != null && jwtTokenProvider.validateToken(token)){
+
+            // 블랙리스트 체크
+            if (tokenBlacklistRepository.existsByToken(token)) {
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "로그아웃된 토큰입니다.");
+                return;
+            }
 
             // 토큰에서 userId꺼냄
             Long userId = jwtTokenProvider.getUserId(token);
@@ -60,10 +67,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new WebAuthenticationDetailsSource().buildDetails(request)
                 );
 
-//                System.out.println("🟡 AccessToken = " + token);
-//                System.out.println("🟡 유효한 토큰인가? " + jwtTokenProvider.validateToken(token));
-//                System.out.println("🟡 추출된 userId = " + userId);
-//                System.out.println("🟡 DB에서 조회된 사용자 있음? " + userOptional.isPresent());
+//                System.out.println("AccessToken = " + token);
+//                System.out.println("유효한 토큰인가? " + jwtTokenProvider.validateToken(token));
+//                System.out.println("추출된 userId = " + userId);
+//                System.out.println("DB에서 조회된 사용자 있음? " + userOptional.isPresent());
 
                 // 인증 객체를 SecurityContext에 등록 [핵심]
                 SecurityContextHolder.getContext().setAuthentication(authentication);
