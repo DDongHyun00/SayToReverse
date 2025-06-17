@@ -28,7 +28,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final UserRepository userRepository;      // 사용자 정보 조회용
     private final TokenBlacklistRepository tokenBlacklistRepository; // 토큰 블랙리스트 확인
 
-    /* 요청이 들어올 때마다 실행되는 메서드*/
+    /* HTTP 요청이 들어올 때마다 실행되는 메서드 */
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {

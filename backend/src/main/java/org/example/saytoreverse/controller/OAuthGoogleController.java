@@ -47,7 +47,7 @@ public class OAuthGoogleController {
     }
 
     /**
-     * 🔹 1. 프론트 → [백엔드] /oauth/google 요청 → 구글 로그인 창으로 리디렉트
+     * 프론트 → [백엔드] /oauth/google 요청 → 구글 로그인 창으로 리디렉트
      */
     @GetMapping("/oauth/google")
     public void redirectToGoogle(HttpServletResponse response) throws Exception {
