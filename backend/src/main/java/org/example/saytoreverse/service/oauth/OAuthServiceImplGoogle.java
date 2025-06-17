@@ -137,7 +137,7 @@ public class OAuthServiceImplGoogle implements OAuthService {
                 String.class
         );
 
-        log.info("🟡 [GoogleUserInfo] 응답: {}", response.getBody());
+        log.info("[GoogleUserInfo] 응답: {}", response.getBody());
 
         JsonNode json = new ObjectMapper().readTree(response.getBody());
         return new GoogleUserDto(json);

@@ -7,6 +7,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.saytoreverse.domain.*;
 import org.example.saytoreverse.dto.kakao.KakaoUserDto;
 import org.example.saytoreverse.repository.OAuthUserRepository;
@@ -27,6 +28,7 @@ import java.util.Optional;
 
 @RequiredArgsConstructor
 @Service("OAuthServiceImplKakao")
+@Slf4j
 public class OAuthServiceImplKakao implements OAuthService {
     private final UserRepository userRepository;
     private final OAuthUserRepository oauthUserRepository;
@@ -52,7 +54,7 @@ public class OAuthServiceImplKakao implements OAuthService {
 
         // accessToken으로 카카오 유저 정보 조회
         KakaoUserDto kakaoUser = getKakaoUserInfo(kakaoAccessToken);
-
+        log.info("[Kakao Login] accessToken: {}", kakaoAccessToken);
 
         // 우리 DB에 이미 등록된 OAuthUser인지 조회
         OAuthUser oAuthUser = oauthUserRepository.findBySocialIdAndSocialType(
@@ -105,6 +107,8 @@ public class OAuthServiceImplKakao implements OAuthService {
         // 쿠키로 전달
         setTokenCookie(response, "AccessToken", accessToken);
         setTokenCookie(response, "RefreshToken", refreshToken);
+        log.info("[Kakao Access/Refresj 토큰 발급 성공] : AccessToken="+accessToken + " refreshToken="+refreshToken);
+        log.info("[Kakao Login] 성공적으로 로그인 처리됨");
     }
 
 
@@ -129,6 +133,8 @@ public class OAuthServiceImplKakao implements OAuthService {
                 entity,
                 String.class
         );
+
+        log.info("[KakaoUserInfo] 응답: {}", response.getBody());
 
         JsonNode jsonNode = new ObjectMapper().readTree(response.getBody());
         return new KakaoUserDto(jsonNode);
