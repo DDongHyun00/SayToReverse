@@ -65,8 +65,17 @@ frontend/.vite/
 # 🐳 Docker & 빌드 이미지 관련
 # ========================
 **/Dockerfile
-**/docker-compose.yml
+docker-compose.yml
 **/.dockerignore
+
+## Docker 빌드 결과와 임시 데이터는 무시
+#volume/
+#tmp/
+#**/tmp/
+#**/volume/
+## Docker 컨테이너에서 생성되는 로그나 파일
+#*.log
+
 
 # ========================
 # 📦 패키지 매니저 로그
