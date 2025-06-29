@@ -32,7 +32,6 @@ AI가 문장을 분석하여 병원, 미용실, 식당 등 적절한 장소를 �
 ### Branch Strategy
 > - main / dev / 브랜치 기본 생성 
 
-
 ### Git Convention
 > 1. 적절한 커밋 접두사 작성
 > 2. 커밋 메시지 내용 작성
