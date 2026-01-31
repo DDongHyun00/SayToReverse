@@ -5,31 +5,30 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.example.saytoreverse.config.jwt.JwtTokenProvider;
-import org.example.saytoreverse.domain.Refresh;
-import org.example.saytoreverse.domain.TokenBlacklist;
 import org.example.saytoreverse.domain.User;
 import org.example.saytoreverse.dto.LoginRequestDto;
 import org.example.saytoreverse.dto.SignupRequestDto;
-import org.example.saytoreverse.repository.RefreshRepository;
-import org.example.saytoreverse.repository.TokenBlacklistRepository;
 import org.example.saytoreverse.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
-    private final RefreshRepository refreshRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
-    private final TokenBlacklistRepository tokenBlacklistRepository;
+    private final TokenBlacklistService tokenBlacklistService;
+    private final RefreshTokenService refreshTokenService;
+
+    @Value("${jwt.refresh-token-expiration}")
+    private long refreshTokenExpiration;
 
 
     // 회원가입
@@ -66,19 +65,8 @@ public class AuthServiceImpl implements AuthService {
         String accessToken = jwtTokenProvider.createAccessToken(user.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
 
-        // Refresh 토큰 DB 저장 (user별로 1개만 존재하게)
-        Optional<Refresh> existing = refreshRepository.findByUser(user);
-        if (existing.isPresent()) {
-            Refresh refresh = existing.get();
-            refresh.setToken(refreshToken);
-            refreshRepository.save(refresh);
-        } else {
-            Refresh refresh = Refresh.builder()
-                    .user(user)
-                    .token(refreshToken)
-                    .build();
-            refreshRepository.save(refresh);
-        }
+        // Redis에 Refresh Token 저장
+        refreshTokenService.saveRefreshToken(user.getId(), refreshToken, refreshTokenExpiration);
 
         // 쿠키에 토큰 저장
         addTokenToCookie("AccessToken", accessToken, response);
@@ -108,12 +96,11 @@ public class AuthServiceImpl implements AuthService {
 
         if(refreshToken != null && jwtTokenProvider.validateToken(refreshToken)) {
             Long userId = jwtTokenProvider.getUserId(refreshToken);
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("사용자 없음"));
 
-            // DB에서 RefreshToken 삭제
-            refreshRepository.deleteByUser(user);
+            // Redis에서 RefreshToken 삭제
+            refreshTokenService.deleteRefreshToken(userId);
         }
+
         // AccessToken 블랙리스트 등록
         String accessToken = Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[]{}))
                 .filter(cookie -> cookie.getName().equals("AccessToken"))
@@ -122,17 +109,11 @@ public class AuthServiceImpl implements AuthService {
                 .orElse(null);
 
         if (accessToken != null && jwtTokenProvider.validateToken(accessToken)) {
-            Long userId = jwtTokenProvider.getUserId(accessToken);
-            LocalDateTime expiration = jwtTokenProvider.getExpiration(accessToken)
-                    .toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
-
-            TokenBlacklist blacklist = TokenBlacklist.builder()
-                    .token(accessToken)
-                    .expiredAt(expiration)
-                    .userId(userId)
-                    .build();
-
-            tokenBlacklistRepository.save(blacklist);
+            Date expiration = jwtTokenProvider.getExpiration(accessToken);
+            long ttlMillis = expiration.getTime() - System.currentTimeMillis();
+            if (ttlMillis > 0) {
+                tokenBlacklistService.addToBlacklist(accessToken, ttlMillis);
+            }
         }
 
         // 쿠키 삭제 (Access, Refresh 둘 다 삭제)
@@ -151,7 +132,6 @@ public class AuthServiceImpl implements AuthService {
 
     // AccessToken 재발급
     @Override
-//    @Transactional
     public void reissue(HttpServletRequest request, HttpServletResponse response) {
 
         // 쿠키에서 RefreshToken 꺼내기
@@ -171,11 +151,8 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자 없음"));
 
-        // DB에 저장된 RefreshToken과 일치하는지 확인
-        Refresh refresh = refreshRepository.findByUser(user)
-                .orElseThrow(()-> new IllegalArgumentException("DB에 토큰 없음"));
-
-        if(!refresh.getToken().equals(refreshToken)) {
+        // Redis에 저장된 RefreshToken과 일치하는지 확인
+        if (!refreshTokenService.validateRefreshToken(userId, refreshToken)) {
             throw new IllegalArgumentException("토큰 불일치");
         }
 
