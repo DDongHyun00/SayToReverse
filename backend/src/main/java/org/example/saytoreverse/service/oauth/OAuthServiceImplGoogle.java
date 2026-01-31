@@ -11,18 +11,17 @@ import org.example.saytoreverse.config.jwt.JwtTokenProvider;
 import org.example.saytoreverse.domain.*;
 import org.example.saytoreverse.dto.Google.GoogleUserDto;
 import org.example.saytoreverse.repository.OAuthUserRepository;
-import org.example.saytoreverse.repository.RefreshRepository;
-import org.example.saytoreverse.repository.TokenBlacklistRepository;
 import org.example.saytoreverse.repository.UserRepository;
+import org.example.saytoreverse.service.RefreshTokenService;
+import org.example.saytoreverse.service.TokenBlacklistService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Optional;
 
 
@@ -33,12 +32,15 @@ public class OAuthServiceImplGoogle implements OAuthService {
 
     private final UserRepository userRepository;
     private final OAuthUserRepository oauthUserRepository;
-    private final RefreshRepository refreshRepository;
     private final JwtTokenProvider jwtTokenProvider;
-    private final TokenBlacklistRepository tokenBlacklistRepository;
+    private final TokenBlacklistService tokenBlacklistService;
+    private final RefreshTokenService refreshTokenService;
 
     @Value("${GOOGLE_USER_INFO_URL}")
     private String GOOGLE_USER_INFO_URL;
+
+    @Value("${jwt.refresh-token-expiration}")
+    private long refreshTokenExpiration;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -74,17 +76,8 @@ public class OAuthServiceImplGoogle implements OAuthService {
         String accessToken = jwtTokenProvider.createAccessToken(user.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
 
-        // Refresh 저장 (있으면 갱신, 없으면 추가)
-        refreshRepository.findByUser(user).ifPresentOrElse(
-                existing -> {
-                    existing.setToken(refreshToken);
-                    refreshRepository.save(existing);
-                },
-                () -> {
-                    Refresh newRefresh = Refresh.builder().user(user).token(refreshToken).build();
-                    refreshRepository.save(newRefresh);
-                }
-        );
+        // Redis에 Refresh Token 저장
+        refreshTokenService.saveRefreshToken(user.getId(), refreshToken, refreshTokenExpiration);
 
         // 쿠키로 전달
         setTokenCookie(response, "AccessToken", accessToken);
@@ -150,18 +143,11 @@ public class OAuthServiceImplGoogle implements OAuthService {
         String accessToken = extractAccessTokenFromCookie(request);
 
         if (accessToken != null && jwtTokenProvider.validateToken(accessToken)) {
-            LocalDateTime expiration = jwtTokenProvider.getExpiration(accessToken)
-                    .toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
-
-            Long userId = jwtTokenProvider.getUserId(accessToken);
-
-            TokenBlacklist blacklist = TokenBlacklist.builder()
-                    .token(accessToken)
-                    .expiredAt(expiration)
-                    .userId(userId)
-                    .build();
-
-            tokenBlacklistRepository.save(blacklist);
+            Date expiration = jwtTokenProvider.getExpiration(accessToken);
+            long ttlMillis = expiration.getTime() - System.currentTimeMillis();
+            if (ttlMillis > 0) {
+                tokenBlacklistService.addToBlacklist(accessToken, ttlMillis);
+            }
         }
 
         String refreshToken = Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[]{}))
@@ -172,11 +158,8 @@ public class OAuthServiceImplGoogle implements OAuthService {
 
         if (refreshToken != null && jwtTokenProvider.validateToken(refreshToken)) {
             Long userId = jwtTokenProvider.getUserId(refreshToken);
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("사용자 없음"));
-
-            // DB에서 RefreshToken 삭제
-            refreshRepository.deleteByUser(user);
+            // Redis에서 RefreshToken 삭제
+            refreshTokenService.deleteRefreshToken(userId);
         }
 
         // 쿠키 만료
@@ -194,7 +177,6 @@ public class OAuthServiceImplGoogle implements OAuthService {
 
 
     @Override
-    @Transactional
     public void reissue(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[]{}))
                 .filter(cookie -> cookie.getName().equals("RefreshToken"))
@@ -210,10 +192,8 @@ public class OAuthServiceImplGoogle implements OAuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자 없음"));
 
-        Refresh saved = refreshRepository.findByUser(user)
-                .orElseThrow(() -> new IllegalArgumentException("DB에 저장된 리프레시 토큰이 없습니다."));
-
-        if (!saved.getToken().equals(refreshToken)) {
+        // Redis에 저장된 RefreshToken과 일치하는지 확인
+        if (!refreshTokenService.validateRefreshToken(userId, refreshToken)) {
             throw new IllegalArgumentException("리프레시 토큰이 일치하지 않습니다.");
         }
 
